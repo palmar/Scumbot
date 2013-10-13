@@ -16,6 +16,7 @@ password = "none"
 channel = "<#insertchannelhere>"
 owner = "Palmar"
 
+
 #defining game messages
 
 newgame = "Good stuff, let's start a game. Signups are now open type !#in to join"
@@ -110,7 +111,7 @@ while True:
     ##TODO: change the admin from hard-code to use a list.
     
     elif data.find (b'!#commandtest') != -1:
-        if userinfo.find (b'owner') != -1 or userinfo.find (b'owner') != -1:
+        if actualusername == owner:
             print(userinfo)
             print(messagetype)
             print(messagelocation)
@@ -119,19 +120,19 @@ while True:
         else:
             print("you're not the boss of me")
   
-  #Owner call is not perfect at the moment, probably doesn't work. Need to re-visit this. You can hardcode your username in here (4 places) to get it running.  
+  #Owner call fixed, but still somewhat vulnerable. Need to use hostname too.
     elif data.find ( b'!#join') != -1:
-        if userinfo.find (b'owner') != -1 or userinfo.find (b'owner') != -1:
+        if actualusername == owner:
             irc.send(bytes("JOIN %s\r\n" % (strparameters), "UTF-8" ))
             channel = strparameters
    
     elif data.find (b'!#forceclose') != -1:
-        if userinfo.find (b'owner') != -1 or userinfo.find (b'owner') != -1:
+        if actualusername == owner:
             break
     
     #this is where the magic happens
     elif data.find (b'!#startgame') != -1:
-        if userinfo.find (b'owner') != -1 or userinfo.find (b'owner') != -1:
+        if actualusername == owner:
 
             if game == 0:
                 irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, newgame), "UTF-8" ))
