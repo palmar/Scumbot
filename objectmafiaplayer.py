@@ -62,44 +62,45 @@ def connectToIrc(network, port, ident, realname):
 
     return irc
 
+class ircMessage:
+    def __init__ (self, message):
+        self.message = parsemessage message
+
+    def parsemessage(message):
+        split = message.split()
+        userinfo = split[0]
+        messagetype = split[1]
+
+        tostringuserinfo = userinfo.decode()
+        setattr(self, 'userinfo', tostringuserinfo)
+        tempusername = tostringuserinfo.split("!")
+        part1username = tempusername[0]
+        temp2username = part1username.split(":")
+        if len(temp2username) > 1:
+            actualusername = temp2username[1]
+            setattr(self, 'username', actualusername)
+    
+        if len(split) > 2:
+            messagelocation = split[2]
+            strmessagelocation = messagelocation.decode()
+            setattr(self, 'messagelocation', strmessagelocation)
+        if len(split) > 3:
+            command = split[3]
+            strcommand = command.decode()
+            setattr(self, 'command', strcommand)
+        if len(split) > 4:
+            parameters = split[4]
+            strparameters = parameters.decode()
+            setattr(self, 'parameter', strparameters)
+
 #run part
 
 irc = connectToIrc(network, port, ident, realname)
 
 while True: 
 
-    #This is where we parse and split whatever the bot reads on IRC so it can be used
-
     data = irc.recv ( 4096 )
-
-    split = data.split()
-    userinfo = split[0]
-    messagetype = split[1]
-
-    tostringuserinfo = userinfo.decode()
-    tempusername = tostringuserinfo.split("!")
-    part1username = tempusername[0]
-    temp2username = part1username.split(":")
-    if len(temp2username) > 1:
-        actualusername = temp2username[1]
-    
-    if len(split) > 2:
-        messagelocation = split[2]
-        strmessagelocation = messagelocation.decode()
-    else:
-        messagelocation = ""
-
-
-    if len(split) > 3:
-        command = split[3]
-    else:
-        command = ""
-
-    if len(split) > 4:
-        parameters = split[4]
-        strparameters = parameters.decode()
-    else:
-        parameters = ""   
+    message = ircMessage(data)
 
     # Here begins the command section. PING response is mandatory for IRC
 
@@ -109,13 +110,14 @@ while True:
     # A few management  commands. This is only for the administrator of the bot
     ##TODO: change the admin from hard-code to use a list.
     
-    elif data.find (b'!#commandtest') != -1:
-        if actualusername == owner:
-            print(userinfo)
-            print(messagetype)
-            print(messagelocation)
-            print(command)
-            print(parameters)
+    elif message.command == "!#commandtest":
+        if message.username == owner:
+            print(message.username)
+            if hasattr(message, 'command')
+                print(message.command)
+            print(message.messagelocation)
+            if hasattr(message, 'parameter')
+                print(message.parameter)
         else:
             print("you're not the boss of me")
   
