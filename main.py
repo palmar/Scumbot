@@ -201,7 +201,7 @@ while True:
 
 
     elif message.command == "!#vote":
-        if message.username not in playerlist:
+        if message.parameter not in playerlist:
             irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, notplayingerror), "UTF-8"))
         elif daystatus == 0:
             irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, nightvoteerror), "UTF-8"))
