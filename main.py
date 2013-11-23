@@ -46,61 +46,62 @@ day = 0
 night = 0
 playerlist = []
 objectplayerlist = []
+
 #make irc connection
 
-irc = socket.socket ( )
-irc.connect ((network, port))
+def connectToIrc(network, port, ident, realname):
+    irc = socket.socket ( )
+    irc.connect ((network, port))
 
+    dataonconnect = irc.recv ( 4096 )
+    if dataonconnect.find (b'PING' ) != -1:
+        irc.send ( b'PONG ' + dataonconnect.split() [ 1 ] + b'\r\n' )
 
-#send all the pongs because my irc server is retarded.
+    irc.send(bytes("NICK %s\r\n" % nick, "UTF-8" ))
+    irc.send(bytes("User %s %s bla :%s\r\n" % (ident, network, realname), "UTF-8" ))
 
-print(irc.recv ( 4096 ))
-data2 = irc.recv ( 4096 )
-if data2.find ( b'PING' ) != -1:
-    irc.send ( b'PONG ' + data2.split() [ 1 ] + b'\r\n' )
-irc.send(bytes("NICK %s\r\n" % nick, "UTF-8" ))
-if data2.find ( b'PING' ) != -1:
-    irc.send ( b'PONG ' + data2.split() [ 1 ] + b'\r\n' )
-irc.send(bytes("User %s %s bla :%s\r\n" % (ident, network, realname), "UTF-8" ))
-if data2.find ( b'PING' ) != -1:
-    irc.send ( b'PONG ' + data2.split() [ 1 ] + b'\r\n' )
+    return irc
+
+class ircMessage:
+    def __init__ (self, message):
+        self.parsemessage(message)
+
+    def parsemessage(self, message):
+        split = message.split()
+        userinfo = split[0]
+        messagetype = split[1]
+
+        tostringuserinfo = userinfo.decode()
+        setattr(self, 'userinfo', tostringuserinfo)
+        tempusername = tostringuserinfo.split("!")
+        part1username = tempusername[0]
+        temp2username = part1username.split(":")
+        if len(temp2username) > 1:
+            actualusername = temp2username[1]
+            setattr(self, 'username', actualusername)
+    
+        if len(split) > 2:
+            messagelocation = split[2]
+            strmessagelocation = messagelocation.decode()
+            setattr(self, 'messagelocation', strmessagelocation)
+        if len(split) > 3:
+            command = split[3]
+            tempstrcommand = command.decode()
+            strcommand = tempstrcommand[1:]
+            setattr(self, 'command', strcommand)
+        if len(split) > 4:
+            parameters = split[4]
+            strparameters = parameters.decode()
+            setattr(self, 'parameter', strparameters)
 
 #run part
 
+irc = connectToIrc(network, port, ident, realname)
+
 while True: 
 
-    #This is where we parse and split whatever the bot reads on IRC so it can be used
-
     data = irc.recv ( 4096 )
-
-    split = data.split()
-    userinfo = split[0]
-    messagetype = split[1]
-
-    tostringuserinfo = userinfo.decode()
-    tempusername = tostringuserinfo.split("!")
-    part1username = tempusername[0]
-    temp2username = part1username.split(":")
-    if len(temp2username) > 1:
-        actualusername = temp2username[1]
-    
-    if len(split) > 2:
-        messagelocation = split[2]
-        strmessagelocation = messagelocation.decode()
-    else:
-        messagelocation = ""
-
-
-    if len(split) > 3:
-        command = split[3]
-    else:
-        command = ""
-
-    if len(split) > 4:
-        parameters = split[4]
-        strparameters = parameters.decode()
-    else:
-        parameters = ""   
+    message = ircMessage(data)
 
     # Here begins the command section. PING response is mandatory for IRC
 
@@ -110,62 +111,63 @@ while True:
     # A few management  commands. This is only for the administrator of the bot
     ##TODO: change the admin from hard-code to use a list.
     
-    elif data.find (b'!#commandtest') != -1:
-        if actualusername == owner:
-            print(userinfo)
-            print(messagetype)
-            print(messagelocation)
-            print(command)
-            print(parameters)
+    elif message.command == "!#commandtest":
+        if message.username == owner:
+            print(message.username)
+            if hasattr(message, 'command'):
+                print(message.command)
+            print(message.messagelocation)
+            if hasattr(message, 'parameter'):
+                print(message.parameter)
         else:
             print("you're not the boss of me")
   
   #Owner call fixed, but still somewhat vulnerable. Need to use hostname too.
-    elif data.find ( b'!#join') != -1:
-        if actualusername == owner:
-            irc.send(bytes("JOIN %s\r\n" % (strparameters), "UTF-8" ))
-            channel = strparameters
+    elif message.command == "!#join":
+        if message.username == owner:
+            irc.send(bytes("JOIN %s\r\n" % (message.parameter), "UTF-8" ))
+            channel = message.parameter
    
-    elif data.find (b'!#forceclose') != -1:
-        if actualusername == owner:
+    elif message.command == "!#forceclose":
+        if message.username == owner:
             break
     
     #this is where the magic happens
-    elif data.find (b'!#startgame') != -1:
-        if actualusername == owner:
+    elif message.command == "!#startgame":
+        if message.username == owner:
 
             if game == 0:
-                irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, newgame), "UTF-8" ))
+                irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, newgame), "UTF-8" ))
                 try:
-                    maxplayers = int(strparameters)
-                    gamestart = "" + actualusername + " has started a game with " + str(maxplayers) + " spots."
-                    irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, gamestart), "UTF-8" ))
+                    maxplayers = int(message.parameter)
+                    gamestart = "" + message.username + " has started a game with " + str(maxplayers) + " spots."
+                    irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, gamestart), "UTF-8" ))
                     game = 1
                 except:
                     pass
-                channel = strmessagelocation
+                channel = message.messagelocation
             else: 
-                irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, gameinprogress), "UTF-8"))
+                irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, gameinprogress), "UTF-8"))
 
-    elif data.find (b'!#forcegameend') != -1:
+    elif message.command == "!#forcegameend":
         game = 0
         playerlist = []
         playercount = 0
         day = 0
         night = 0
 
-    elif data.find (b'!#in') != -1:
-        if len(playerlist) < maxplayers and game == 1 and actualusername not in playerlist:     
-            playerlist.append(actualusername)
-            playerspecificmessage = actualusername + " has joined the game"
-            irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, playerspecificmessage), "UTF-8"))
+    elif message.command == "!#in":
+        if len(playerlist) < maxplayers and game == 1 and message.username not in playerlist:     
+            playerlist.append(message.username)
+            playerspecificmessage = message.username + " has joined the game"
+            irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, playerspecificmessage), "UTF-8"))
             playercount = len(playerlist)    
         
             if len(playerlist) == maxplayers:
                 randomizedlist = list(playerlist)
                 currentplayerlist = list(playerlist)
                 random.shuffle(randomizedlist, random.random)
-                irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, gamestartingmessage2), "UTF-8"))
+                irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, gamestartingmessage2), "UTF-8"))
             
                 objectplayerlist = []
                 n = 0
@@ -184,32 +186,32 @@ while True:
                 for item1 in objectplayerlist:
                     irc.send(bytes("PRIVMSG %s :%s\r\n" % (item1.getname(), item1.tostring()), "UTF-8"))
         else:
-            irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, gamesstartingmessage), "UTF-8"))
+            irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, gamesstartingmessage), "UTF-8"))
             
     
-    elif data.find (b'!#listplayers') != -1:
+    elif message.command == "!#listplayers":
         if day == 0:
-            irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, playerlist), "UTF-8"))
+            irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, playerlist), "UTF-8"))
         else:
             returnlist = []
             for item in objectplayerlist:
                 returnlist.append(item.getname())
                 random.shuffle(returnlist, random.random)
-            irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, returnlist), "UTF-8"))
+            irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, returnlist), "UTF-8"))
 
 
-    elif data.find (b'!#vote') != -1 or data.find (b'!#Vote') != -1:
-        if actualusername not in playerlist:
-            irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, notplayingerror), "UTF-8"))
+    elif message.command == "!#vote":
+        if message.username not in playerlist:
+            irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, notplayingerror), "UTF-8"))
         elif daystatus == 0:
-            irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, nightvoteerror), "UTF-8"))
+            irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, nightvoteerror), "UTF-8"))
         else:
-            testtext2 = "" + actualusername + " has voted for: " + strparameters
+            testtext2 = "" + message.username + " has voted for: " + message.parameter
             
             for item in objectplayerlist:
-                if item.getname() == actualusername:
-                    item.setvotes(strparameters)
-                    irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, testtext2), "UTF-8"))
+                if item.getname() == message.username:
+                    item.setvotes(message.parameter)
+                    irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, testtext2), "UTF-8"))
 
             votecount = 0
 
@@ -217,22 +219,22 @@ while True:
                 item.resetvote()
 
             for item in objectplayerlist:
-                if item.votes == strparameters:
+                if item.votes == message.parameter:
                    votecount = votecount + 1
 
             for item in objectplayerlist:
-                if item.getname() == strparameters:
+                if item.getname() == message.parameter:
                     item.votecount(votecount)
 
             for item in objectplayerlist:
-                if item.getname() == strparameters:
+                if item.getname() == message.parameter:
                     infovotecounttext2 = "" + item.getname() + " now has " + str(item.lynchvotes) + " votes against him"
-                    irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, infovotecounttext2), "UTF-8"))
+                    irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, infovotecounttext2), "UTF-8"))
 
             for item in objectplayerlist:
                 if item.lynchvotes > len(objectplayerlist)/2:
                     lynchmessage2 = "" + item.name + " has been lynched. He was " + item.alignment
-                    irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, lynchmessage2), "UTF-8"))
+                    irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, lynchmessage2), "UTF-8"))
                     item.kill()
                     daystatus = 0
                     night = night + 1
@@ -246,20 +248,20 @@ while True:
                             mafiacount = mafiacount + 1
 
                     if mafiacount >= (playercount/2):
-                        irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, gameovermafiawins), "UTF-8"))
+                        irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, gameovermafiawins), "UTF-8"))
                     elif mafiacount == 0:
-                        irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, gameovertownwins), "UTF-8"))
+                        irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, gameovertownwins), "UTF-8"))
                     else:
                         nightmessage = "It is now night: " + str(night) + ". Please send in your night actions."
-                        irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, nightmessage), "UTF-8"))
+                        irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, nightmessage), "UTF-8"))
 
-    elif data.find (b'!#nightkill') != -1:
-        if strmessagelocation == nick:                
+    elif message.command == "!#nightkill":
+        if message.messagelocation == nick:                
             for item in objectplayerlist:
-                if item.name == actualusername:
+                if item.name == message.username:
                     if item.alignment == "Mafia":
                         for item2 in objectplayerlist:
-                            if item2.name == strparameters:
+                            if item2.name == message.parameter:
                                 item2.kill()
                                 daystatus = 1
                                 day = day + 1
@@ -285,15 +287,9 @@ while True:
                                     irc.send(bytes("PRIVMSG %s :%s\r\n" % (channel, daymessage), "UTF-8"))
                     else:
                         yourenotmafiamessage = "you're not even part of the Mafia"
-                        if item.getname() == actualusername:
+                        if item.getname() == message.username:
                             irc.send(bytes("PRIVMSG %s :%s\r\n" % (item.getname(), yourenotmafiamessage), "UTF-8"))
         else:
             killsonlyinpmerror = "nightkills should only be sent using PM"
-            irc.send(bytes("PRIVMSG %s :%s\r\n" % (strmessagelocation, killsonlyinpmerror), "UTF-8"))
+            irc.send(bytes("PRIVMSG %s :%s\r\n" % (message.messagelocation, killsonlyinpmerror), "UTF-8"))
     print(data)
-
-
-
-
-
-
