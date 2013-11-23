@@ -10,9 +10,7 @@ This simple bot can currently host a vanilla only version of the party game Mafi
 
 Note: Current Issues
 
-Too much stuff is hardcoded. The Main class is being rewritten, if anyone wants to actually use the bot, please run
-objectmafiaplayer.py instead of main.py. The old main class will soon be removed from the project and replaced with
-the new better written one.
+The main class has been partially rewritten, so there's that! :)
 
 =======
 
