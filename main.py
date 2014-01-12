@@ -64,8 +64,10 @@ def connectToIrc(network, port, ident, realname):
 
 class ircMessage:
     def __init__ (self, message):
-        self.parsemessage(message)
-
+        try:
+            self.parsemessage(message)
+        except:
+            pass
     def parsemessage(self, message):
         split = message.split()
         userinfo = split[0]
@@ -110,6 +112,8 @@ while True:
 
     # A few management  commands. This is only for the administrator of the bot
     ##TODO: change the admin from hard-code to use a list.
+    if not hasattr(message, 'command'):
+        pass
     
     elif message.command == "!#commandtest":
         if message.username == owner:
